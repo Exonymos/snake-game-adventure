@@ -16,6 +16,8 @@ def resourse_path(relative_path):
 def init_audio():
     pygame.mixer.init()
     # Start background music (loop indefinitely)
+    pygame.mixer.pre_init(frequency=16000, size=-16, channels=2, buffer=1024) # Fixed sound mismatch
+    pygame.mixer.init()
     play_music("assets/music.wav")
 
 

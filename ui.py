@@ -41,7 +41,7 @@ def entrance_menu():
     table.add_row("[bold yellow]7.[/bold yellow]", "Quit")
     console.print(table)
     choice = Prompt.ask(
-        "\nSelect an option", choices=[str(i) for i in range(1, 10)], default="1"
+        "\nSelect an option", default="1"
     )
     return choice
 
@@ -60,7 +60,7 @@ def start_game_menu():
     console.clear()
     console.print(Panel.fit("Select Game Mode", border_style="cyan"))
     console.print(table)
-    mode_choice = Prompt.ask("\nSelect a mode", choices=["1", "2", "3"], default="1")
+    mode_choice = Prompt.ask("\nSelect a mode", default="1")
     if mode_choice == "1":
         return "classic"
     elif mode_choice == "2":
@@ -163,7 +163,6 @@ def settings_menu(settings_manager):
                 console.print(choices_table)
                 user_choice = Prompt.ask(
                     "Enter the number corresponding to your choice",
-                    choices=[str(i) for i in range(1, len(choices) + 1)],
                 )
                 new_choice = choices[int(user_choice) - 1]
                 settings_manager.update_setting(opt_key, new_choice)
