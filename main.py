@@ -1,6 +1,7 @@
 # main.py
 import asyncio
 import sys
+import time
 from settings import SettingsManager, ScoreManager
 from achievements import AchievementsManager
 from ui import (
@@ -28,9 +29,9 @@ async def main():
             mode = start_game_menu()
             game = SnakeGame(settings_manager.options, mode=mode)
             score = await game.run()
-            score_manager.update_score(score)
+            score_manager.update_score(mode, score)
             achievements_manager.update_stats(score)
-            input("Game Over! Press ENTER to return to the main menu...")
+            input("Press ENTER to return to the main menu...")
         elif choice == "2":
             instructions_menu()
         elif choice == "3":
@@ -41,8 +42,9 @@ async def main():
             high_scores_menu(score_manager)
         elif choice == "6":
             achievements_menu(achievements_manager)
-        elif choice == "7":
-            print("Goodbye and thanks for playing!")
+        elif choice in ["7", "q", "Q"]:
+            print("Thank you for playing Snake Game! Goodbye!")
+            time.sleep(1)
             sys.exit(0)
 
 

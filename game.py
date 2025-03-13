@@ -17,7 +17,7 @@ class SnakeGame:
 
     def __init__(self, settings, mode="classic"):
         self.term = Terminal()
-        self.settings = settings  # This is a dict from SettingsManager.options
+        self.settings = settings  # Dictionary from SettingsManager.options
         self.mode = mode  # "classic", "time_attack", or "survival"
         self.board_width = 40
         self.board_height = 20
@@ -32,6 +32,7 @@ class SnakeGame:
     def reset_game(self):
         self.score = 0
         self.start_time = time.time()
+        self.time_up = False  # Flag to indicate time ran out
         if self.mode == "time_attack":
             self.time_limit = 60  # seconds
         start_x = self.board_width // 2
@@ -61,23 +62,26 @@ class SnakeGame:
             self.power_items.append({"pos": pos, "type": item_type})
 
     def process_input(self, key):
-        # Use custom controls from settings "4"
-        controls = self.settings["4"]["value"]
+        # Fixed mapping for arrow keys and WASD
         mapping = {
-            controls.get("up", "KEY_UP"): (0, -1),
-            controls.get("down", "KEY_DOWN"): (0, 1),
-            controls.get("left", "KEY_LEFT"): (-1, 0),
-            controls.get("right", "KEY_RIGHT"): (1, 0),
-            # Also allow default WASD as fallback
+            "KEY_UP": (0, -1),
+            "KEY_DOWN": (0, 1),
+            "KEY_LEFT": (-1, 0),
+            "KEY_RIGHT": (1, 0),
             "w": (0, -1),
             "s": (0, 1),
             "a": (-1, 0),
             "d": (1, 0),
         }
         if key in mapping:
-            new_dir = mapping[key]
-            if (new_dir[0] * -1, new_dir[1] * -1) != self.direction:
-                self.direction = new_dir
+            candidate = mapping[key]
+            # If invert controls is enabled, reverse the candidate direction.
+            if self.settings["4"]["value"]:
+                candidate = (-candidate[0], -candidate[1])
+            # Prevent 180-degree turns
+            if candidate == (-self.direction[0], -self.direction[1]):
+                return
+            self.direction = candidate
 
     def get_background(self):
         # Dynamic background: cycle through colors based on time and theme.
@@ -103,7 +107,7 @@ class SnakeGame:
         head_x, head_y = self.snake[0]
         dx, dy = self.direction
         new_head = (head_x + dx, head_y + dy)
-        # Check wall collisions
+        # Check wall collisions.
         if (
             new_head[0] <= 0
             or new_head[0] >= self.board_width - 1
@@ -112,14 +116,20 @@ class SnakeGame:
         ):
             self.game_over = True
             return
-        # Check self-collision
+        # Check self-collision.
         if new_head in self.snake:
             self.game_over = True
             return
         self.snake.insert(0, new_head)
-        # Check food
+        # Check food collision with mode-specific scoring.
         if new_head == self.food:
-            self.score += 10
+            if self.mode == "classic":
+                food_points = 10
+            elif self.mode == "time_attack":
+                food_points = 15
+            elif self.mode == "survival":
+                food_points = 20
+            self.score += food_points
             audio.play_sound("assets/eat.wav")
             self.food = self.spawn_item(exclude=self.snake)
             if self.settings["1"]["value"]:
@@ -127,23 +137,38 @@ class SnakeGame:
                 self.delay = max(0.02, self.delay * factor)
         else:
             self.snake.pop()
-        # Check power items
+        # Check power items collision.
         for item in self.power_items:
             if new_head == item["pos"]:
                 if item["type"] == "powerup":
-                    self.score += 20
+                    if self.mode == "classic":
+                        pu_points = 20
+                    elif self.mode == "time_attack":
+                        pu_points = 25
+                    elif self.mode == "survival":
+                        pu_points = 30
+                    self.score += pu_points
                     audio.play_sound("assets/power-up.wav")
                 elif item["type"] == "powerdown":
-                    self.score = max(0, self.score - 5)
+                    if self.mode == "classic":
+                        pd_points = 5
+                    elif self.mode == "time_attack":
+                        pd_points = 7
+                    elif self.mode == "survival":
+                        pd_points = 10
+                    self.score = max(0, self.score - pd_points)
                     audio.play_sound("assets/power-down.wav")
                     if len(self.snake) > 3:
                         self.snake.pop()
                 self.power_items.remove(item)
                 break
         self.maybe_spawn_power_item()
-        if self.mode == "time_attack":
-            if time.time() - self.start_time >= self.time_limit:
-                self.game_over = True
+        # End the game in time_attack mode when time is up.
+        if self.mode == "time_attack" and (
+            time.time() - self.start_time >= self.time_limit
+        ):
+            self.time_up = True
+            self.game_over = True
 
     def draw(self):
         bg_func = self.get_background()
@@ -187,7 +212,6 @@ class SnakeGame:
     async def run(self):
         self.reset_game()
         loop = asyncio.get_event_loop()
-        # Removed term.noecho() since it's not a context manager.
         with self.term.cbreak(), self.term.hidden_cursor():
             while not self.game_over:
                 start_time = loop.time()
@@ -198,5 +222,10 @@ class SnakeGame:
                 self.draw()
                 elapsed = loop.time() - start_time
                 await asyncio.sleep(max(0, self.delay - elapsed))
+        # In time_attack mode, add bonus points for remaining time.
+        if self.mode == "time_attack" and self.time_up:
+            print("Time's up!")
+        else:
+            print("Game Over!")
         audio.play_sound("assets/game-over.wav")
         return self.score

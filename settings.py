@@ -10,14 +10,14 @@ SCORE_FILE = "score.json"
 
 DEFAULT_SETTINGS = {
     "1": {
-        "name": "Gradually speed up snake",
+        "name": "Gradually Speed Up Snake",
         "type": "toggle",
         "save": True,
         "default": True,
         "value": True,
     },
     "2": {
-        "name": "Snake speed",
+        "name": "Snake Speed",
         "type": "choice",
         "choices": ["1: Slow", "2: Normal", "3: Fast"],
         "save": True,
@@ -33,21 +33,11 @@ DEFAULT_SETTINGS = {
         "value": "Default",
     },
     "4": {
-        "name": "Custom Controls",
-        "type": "mapping",
+        "name": "Invert Controls",
+        "type": "toggle",
         "save": True,
-        "default": {
-            "up": "KEY_UP",
-            "down": "KEY_DOWN",
-            "left": "KEY_LEFT",
-            "right": "KEY_RIGHT",
-        },
-        "value": {
-            "up": "KEY_UP",
-            "down": "KEY_DOWN",
-            "left": "KEY_LEFT",
-            "right": "KEY_RIGHT",
-        },
+        "default": False,
+        "value": False,
     },
 }
 
@@ -67,7 +57,11 @@ class SettingsManager:
                     data = json.load(f)
                     for key, option in self.options.items():
                         if key in data:
-                            option["value"] = data[key]
+                            # Ensure toggles are booleans.
+                            if option["type"] == "toggle":
+                                option["value"] = bool(data[key])
+                            else:
+                                option["value"] = data[key]
             except Exception as e:
                 console.print(f"[red]Error loading settings: {e}[/red]")
         else:
@@ -90,13 +84,23 @@ class SettingsManager:
             self.options[key]["value"] = value
             self.save_settings()
 
+    def reset_settings(self):
+        for key, option in self.options.items():
+            option["value"] = option["default"]
+        self.save_settings()
+
 
 class ScoreManager:
-    """Manage and persist scores: high score and last score."""
+    """Manage and persist scores for different game modes and combined scores."""
 
     def __init__(self, filename=SCORE_FILE):
         self.filename = filename
-        self.scores = {"high_score": 0, "last_score": 0, "high_score_time": None}
+        self.scores = {
+            "classic": {"last": 0, "high": 0},
+            "time_attack": {"last": 0, "high": 0},
+            "survival": {"last": 0, "high": 0},
+            "combined": {"last": 0, "high": 0},
+        }
         self.load_scores()
 
     def load_scores(self):
@@ -116,13 +120,19 @@ class ScoreManager:
         except Exception as e:
             console.print(f"[red]Error saving scores: {e}[/red]")
 
-    def update_score(self, score):
-        self.scores["last_score"] = score
-        if score > self.scores.get("high_score", 0):
-            self.scores["high_score"] = score
-            from datetime import datetime
-
-            self.scores["high_score_time"] = datetime.now().strftime(
-                "%Y-%m-%d %H:%M:%S"
-            )
+    def update_score(self, mode, score):
+        self.scores[mode]["last"] = score
+        if score > self.scores[mode]["high"]:
+            self.scores[mode]["high"] = score
+        # Combined scores are now the sum of all three modes.
+        self.scores["combined"]["last"] = (
+            self.scores["classic"]["last"]
+            + self.scores["time_attack"]["last"]
+            + self.scores["survival"]["last"]
+        )
+        self.scores["combined"]["high"] = (
+            self.scores["classic"]["high"]
+            + self.scores["time_attack"]["high"]
+            + self.scores["survival"]["high"]
+        )
         self.save_scores()

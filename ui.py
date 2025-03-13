@@ -1,14 +1,34 @@
 # ui.py
+import sys
+import time
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 from rich.prompt import Prompt
-import time
 
 console = Console()
 
 
+def safe_prompt(message, **kwargs):
+    """Wrapper around Prompt.ask that catches KeyboardInterrupt."""
+    try:
+        return Prompt.ask(message, **kwargs)
+    except KeyboardInterrupt:
+        print("\nExiting the game. Bye!")
+        sys.exit(0)
+
+
+def safe_input(prompt=""):
+    """Wrapper around input() that catches KeyboardInterrupt."""
+    try:
+        return input(prompt)
+    except KeyboardInterrupt:
+        print("\nExiting the game. Bye!")
+        sys.exit(0)
+
+
 def entrance_menu():
+    console.clear()
     snake_ascii = r"""
         _            _             _                   _              _      
        / /\         /\ \     _    / /\                /\_\           /\ \    
@@ -22,7 +42,6 @@ def entrance_menu():
 \ \/___/ /  / / /    / / // / /_       __\ \_\/ / /    \ \ \ / / /_______\   
  \_____\/   \/_/     \/_/ \_\___\     /____/_/\/_/      \_\_\\/__________/   
     """
-    console.clear()
     console.print(
         Panel(
             snake_ascii,
@@ -40,27 +59,21 @@ def entrance_menu():
     table.add_row("[bold yellow]6.[/bold yellow]", "Achievements")
     table.add_row("[bold yellow]7.[/bold yellow]", "Quit")
     console.print(table)
-    choice = Prompt.ask(
-        "\nSelect an option", default="1"
-    )
+    choice = safe_prompt("\nSelect an option", default="1")
     return choice
 
 
 def start_game_menu():
-    from rich.table import Table
-    from rich.prompt import Prompt
-
+    console.clear()
     table = Table(show_header=False, box=None)
     table.add_row("[bold yellow]1.[/bold yellow]", "Classic")
     table.add_row("[bold yellow]2.[/bold yellow]", "Time Attack")
     table.add_row("[bold yellow]3.[/bold yellow]", "Survival")
-    import time
     from rich.panel import Panel
 
-    console.clear()
     console.print(Panel.fit("Select Game Mode", border_style="cyan"))
     console.print(table)
-    mode_choice = Prompt.ask("\nSelect a mode", default="1")
+    mode_choice = safe_prompt("\nSelect a mode", default="1")
     if mode_choice == "1":
         return "classic"
     elif mode_choice == "2":
@@ -70,26 +83,26 @@ def start_game_menu():
 
 
 def instructions_menu():
+    console.clear()
     instructions = """
 [bold underline]How to Play:[/bold underline]
 • Use the Arrow keys or W/A/S/D to control the snake.
 • The snake’s head is represented by [green]●[/green] and its body by [green]■[/green].
-• Your goal is to eat the food [red]♥[/red] which increases your score by 10 and grows your snake.
+• Your goal is to eat the food [red]♥[/red] which increases your score and grows your snake.
 • Occasionally, power items will appear:
-    - [bright_yellow]Power-Up (♦)[/bright_yellow]: Increases your score by 20.
-    - [bright_red]Power-Down (▲)[/bright_red]: Reduces your score by 5 and may shrink your snake if its length exceeds the starting length.
+    - [bright_yellow]Power-Up (♦)[/bright_yellow]: Increases your score.
+    - [bright_red]Power-Down (▲)[/bright_red]: Reduces your score and may shrink your snake.
 • In Time Attack mode, you have a limited time to score as high as possible.
 • In Survival mode, the game speeds up more aggressively.
-• The walls (borders) are deadly – colliding with them or your own tail ends the game.
+• The walls are deadly – colliding with them or your own tail ends the game.
 • After losing, press ENTER to return to the main menu.
 
 [bold underline]Controls:[/bold underline]
 • Movement: Arrow Keys or W/A/S/D
-• Menu Selection: Type the corresponding number and press ENTER.
+• Menu Selection: Type the corresponding option and press ENTER.
 
 Enjoy the game and aim for a new high score!
     """
-    console.clear()
     console.print(
         Panel(
             instructions,
@@ -97,10 +110,11 @@ Enjoy the game and aim for a new high score!
             border_style="cyan",
         )
     )
-    input("\nPress ENTER to return to the main menu...")
+    safe_input("\nPress ENTER to return to the main menu...")
 
 
 def about_menu():
+    console.clear()
     about_text = """
 [bold underline]About Snake Game[/bold underline]
 
@@ -108,7 +122,7 @@ This enhanced, terminal-based Snake game features creative visuals, animations, 
 It includes multiple game modes:
 • Classic: Standard gameplay.
 • Time Attack: Score as high as possible within a time limit.
-• Survival: Increase difficulty aggressively to test your endurance.
+• Survival: Increase difficulty aggressively.
 
 Audio feedback and background music enhance the experience.
 Statistics and achievements track your progress.
@@ -118,7 +132,6 @@ Statistics and achievements track your progress.
 
 Enjoy slithering through the game and challenge yourself to beat your records!
     """
-    console.clear()
     console.print(
         Panel(
             about_text,
@@ -126,73 +139,91 @@ Enjoy slithering through the game and challenge yourself to beat your records!
             border_style="magenta",
         )
     )
-    input("\nPress ENTER to return to the main menu...")
+    safe_input("\nPress ENTER to return to the main menu...")
 
 
 def settings_menu(settings_manager):
-    from rich.table import Table
-    from rich.prompt import Prompt
-
-    console.clear()
     while True:
+        console.clear()
         table = Table(title="Settings", show_header=True, header_style="bold cyan")
-        table.add_column("Option Number", justify="center")
+        table.add_column("Option", justify="center")
         table.add_column("Name", justify="left")
         table.add_column("Value", justify="center")
         options_list = list(settings_manager.options.items())
-        for i, (key, option) in enumerate(options_list, start=1):
-            table.add_row(str(i), option["name"], str(option["value"]))
+        for key, option in options_list:
+            value = option["value"]
+            if option["type"] == "toggle":
+                value = "On" if value else "Off"
+            table.add_row(key, option["name"], str(value))
+        table.add_row("R", "Reset to Defaults", "")
+        table.add_row("B", "Back to Main Menu", "")
         console.print(table)
-        console.print(
-            "\nType the Option Number to change or type 'back' to return to the main menu."
+        choice = (
+            safe_prompt("\nSelect an option (number, R, or B)", default="B")
+            .strip()
+            .lower()
         )
-        choice = Prompt.ask("Your choice").strip()
-        if choice.lower() == "back":
+        if choice in ["b", "back"]:
             break
-        if choice.isdigit() and 1 <= int(choice) <= len(options_list):
-            opt_key, opt = options_list[int(choice) - 1]
-            if opt["type"] == "toggle":
-                new_val = not opt["value"]
+        elif choice == "r":
+            confirm = safe_prompt(
+                "Reset all settings to default? (y/n)", choices=["y", "n"], default="n"
+            )
+            if confirm.lower() == "y":
+                settings_manager.reset_settings()
+                console.print("[green]Settings have been reset to default.[/green]")
+                safe_input("Press ENTER to continue...")
+                console.clear()
+        elif choice in [opt_key for opt_key, _ in options_list]:
+            opt_key = choice
+            option = settings_manager.options[opt_key]
+            if option["type"] == "toggle":
+                new_val = not option["value"]
                 settings_manager.update_setting(opt_key, new_val)
-                console.print(f"[green]{opt['name']} set to {new_val}.[/green]")
-            elif opt["type"] == "choice":
-                choices = opt["choices"]
-                choices_table = Table(title=f"Select {opt['name']}", show_header=False)
-                for idx, choice_str in enumerate(choices, start=1):
-                    choices_table.add_row(f"{idx}.", choice_str)
-                console.print(choices_table)
-                user_choice = Prompt.ask(
+                console.print(
+                    f"[green]{option['name']} set to {'On' if new_val else 'Off'}.[/green]"
+                )
+                safe_input("Press ENTER to continue...")
+                console.clear()
+            elif option["type"] == "choice":
+                choices = option["choices"]
+                choice_table = Table(
+                    title=f"Select {option['name']}", show_header=False
+                )
+                for idx, ch in enumerate(choices, start=1):
+                    choice_table.add_row(f"{idx}.", ch)
+                console.print(choice_table)
+                user_choice = safe_prompt(
                     "Enter the number corresponding to your choice",
+                    default="1",
                 )
                 new_choice = choices[int(user_choice) - 1]
                 settings_manager.update_setting(opt_key, new_choice)
-                console.print(f"[green]{opt['name']} set to {new_choice}.[/green]")
-            input("\nPress ENTER to continue...")
+                console.print(f"[green]{option['name']} set to {new_choice}.[/green]")
+                input("Press ENTER to continue...")
         else:
             console.print("[red]Invalid input. Please try again.[/red]")
-            input("\nPress ENTER to continue...")
+            safe_input("Press ENTER to continue...")
+            console.clear()
 
 
 def high_scores_menu(score_manager):
-    from rich.table import Table
-
     console.clear()
     table = Table(title="High Scores", show_header=True, header_style="bold blue")
+    table.add_column("Mode", justify="center")
     table.add_column("Last Score", justify="center")
     table.add_column("High Score", justify="center")
-    table.add_column("High Score Time", justify="center")
-    table.add_row(
-        str(score_manager.scores.get("last_score", 0)),
-        str(score_manager.scores.get("high_score", 0)),
-        str(score_manager.scores.get("high_score_time", "N/A")),
-    )
+    modes = ["classic", "time_attack", "survival", "combined"]
+    for mode in modes:
+        mode_display = mode.replace("_", " ").title()
+        last = score_manager.scores.get(mode, {}).get("last", 0)
+        high = score_manager.scores.get(mode, {}).get("high", 0)
+        table.add_row(mode_display, str(last), str(high))
     console.print(table)
-    input("\nPress ENTER to return to the main menu...")
+    safe_input("\nPress ENTER to return to the main menu...")
 
 
 def achievements_menu(achievements_manager):
-    from rich.table import Table
-
     console.clear()
     stats = achievements_manager.get_stats()
     table = Table(
@@ -202,6 +233,7 @@ def achievements_menu(achievements_manager):
     table.add_column("Total Score", justify="center")
     table.add_column("Best Score", justify="center")
     table.add_column("Last Game Time", justify="center")
+
     table.add_row(
         str(stats["total_games"]),
         str(stats["total_score"]),
@@ -209,4 +241,4 @@ def achievements_menu(achievements_manager):
         str(stats["last_game_time"] or "N/A"),
     )
     console.print(table)
-    input("\nPress ENTER to return to the main menu...")
+    safe_input("\nPress ENTER to return to the main menu...")
