@@ -7,7 +7,7 @@ A modern, console-based Snake game that combines classic arcade gameplay with mo
 [![GitHub license](https://img.shields.io/badge/License-MIT-brightgreen)](https://github.com/Exonymos/snake-game-adventure/blob/main/LICENSE)
 [![GitHub issues](https://img.shields.io/github/issues/Exonymos/snake-game-adventure)](https://github.com/Exonymos/snake-game-adventure/issues)
 [![GitHub last commit](https://img.shields.io/github/last-commit/Exonymos/snake-game-adventure)](https://github.com/Exonymos/snake-game-adventure/commits/main)
-<!-- [![Github release](https://img.shields.io/github/v/release/Exonymos/snake-game-adventure?color=brightgreen)](https://github.com/Exonymos/snake-game-adventure/releases/latest)<br> -->
+[![Github release](https://img.shields.io/github/v/release/Exonymos/snake-game-adventure?color=brightgreen)](https://github.com/Exonymos/snake-game-adventure/releases/latest)<br>
 [![GitHub stars](https://img.shields.io/github/stars/Exonymos/snake-game-adventure)](https://github.com/Exonymos/snake-game-adventure/stargazers)
 [![GitHub forks](https://img.shields.io/github/forks/Exonymos/snake-game-adventure)](https://github.com/Exonymos/snake-game-adventure/network)
 
