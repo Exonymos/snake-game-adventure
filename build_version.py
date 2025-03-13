@@ -2,7 +2,7 @@ import pyinstaller_versionfile
 
 pyinstaller_versionfile.create_versionfile(
     output_file="versionfile.txt",
-    version="1.0.0.0",
+    version="1.0.1.0",
     company_name="Exonymos",
     file_description=(
         "A modern, console-based Snake game that combines classic arcade gameplay "
