@@ -19,15 +19,15 @@ DEFAULT_SETTINGS = {
     "2": {
         "name": "Snake Speed",
         "type": "choice",
-        "choices": ["1: Slow", "2: Normal", "3: Fast"],
+        "choices": ["Slow", "Normal", "Fast"],
         "save": True,
-        "default": "2: Normal",
-        "value": "2: Normal",
+        "default": "Normal",
+        "value": "Normal",
     },
     "3": {
         "name": "Theme",
         "type": "choice",
-        "choices": ["Default", "Blue", "Red", "Green"],
+        "choices": ["Default", "Rainbow", "Dark"],
         "save": True,
         "default": "Default",
         "value": "Default",
@@ -38,6 +38,28 @@ DEFAULT_SETTINGS = {
         "save": True,
         "default": False,
         "value": False,
+    },
+    "5": {
+        "name": "Allow Wall Wrapping (Classic Mode)",
+        "type": "toggle",
+        "save": True,
+        "default": False,
+        "value": False,
+    },
+    "6": {
+        "name": "Music On/Off",
+        "type": "toggle",
+        "save": True,
+        "default": True,
+        "value": True,
+    },
+    "7": {
+        "name": "Difficulty",
+        "type": "choice",
+        "choices": ["Easy", "Normal", "Hard"],
+        "save": True,
+        "default": "Normal",
+        "value": "Normal",
     },
 }
 
@@ -57,7 +79,6 @@ class SettingsManager:
                     data = json.load(f)
                     for key, option in self.options.items():
                         if key in data:
-                            # Ensure toggles are booleans.
                             if option["type"] == "toggle":
                                 option["value"] = bool(data[key])
                             else:
@@ -124,7 +145,6 @@ class ScoreManager:
         self.scores[mode]["last"] = score
         if score > self.scores[mode]["high"]:
             self.scores[mode]["high"] = score
-        # Combined scores are now the sum of all three modes.
         self.scores["combined"]["last"] = (
             self.scores["classic"]["last"]
             + self.scores["time_attack"]["last"]
@@ -135,4 +155,13 @@ class ScoreManager:
             + self.scores["time_attack"]["high"]
             + self.scores["survival"]["high"]
         )
+        self.save_scores()
+
+    def clear_scores(self):
+        self.scores = {
+            "classic": {"last": 0, "high": 0},
+            "time_attack": {"last": 0, "high": 0},
+            "survival": {"last": 0, "high": 0},
+            "combined": {"last": 0, "high": 0},
+        }
         self.save_scores()

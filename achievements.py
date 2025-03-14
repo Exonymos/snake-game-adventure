@@ -7,11 +7,22 @@ from rich.console import Console
 console = Console()
 ACHIEVEMENTS_FILE = "achievements.json"
 
+# Predefined possible achievements and their details.
+POSSIBLE_ACHIEVEMENTS = {
+    "Food Frenzy": "Eat 10 food items consecutively without missing.",
+    "Long Snake": "Grow your snake to 15 segments.",
+    "Marathon": "Survive 5 minutes in Survival mode.",
+    "Combo Master": "Score at least 500 points in Time Attack mode.",
+    "Speed Demon": "Complete a Classic game on Hard difficulty with a score of at least 200.",
+    "Persistence": "Play 10 or more games in total.",
+}
+
 DEFAULT_ACHIEVEMENTS = {
     "total_games": 0,
     "total_score": 0,
     "best_score": 0,
     "last_game_time": None,
+    "achievements": [],
 }
 
 
@@ -48,7 +59,37 @@ class AchievementsManager:
         self.stats["last_game_time"] = datetime.datetime.now().strftime(
             "%Y-%m-%d %H:%M:%S"
         )
+        # Check Persistence achievement
+        if self.stats["total_games"] >= 10:
+            self.add_achievement("Persistence")
         self.save_stats()
+
+    def add_achievement(self, achievement_key):
+        # Use the possible achievements dictionary to get full name/description.
+        if not any(a["name"] == achievement_key for a in self.stats["achievements"]):
+            unlock_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            self.stats["achievements"].append(
+                {"name": achievement_key, "unlock_time": unlock_time}
+            )
+            console.print(
+                f"[bold green]Achievement Unlocked: {achievement_key} at {unlock_time}![/bold green]"
+            )
+            self.save_stats()
 
     def get_stats(self):
         return self.stats
+
+    def get_unlocked(self):
+        return self.stats.get("achievements", [])
+
+    def get_locked(self):
+        unlocked = {a["name"] for a in self.get_unlocked()}
+        return [
+            {"name": key, "detail": POSSIBLE_ACHIEVEMENTS[key]}
+            for key in POSSIBLE_ACHIEVEMENTS
+            if key not in unlocked
+        ]
+
+    def clear_achievements(self):
+        self.stats["achievements"] = []
+        self.save_stats()

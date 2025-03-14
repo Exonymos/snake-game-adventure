@@ -1,10 +1,11 @@
 # ui.py
 import sys
-import time
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 from rich.prompt import Prompt
+from achievements import POSSIBLE_ACHIEVEMENTS
+import audio
 
 console = Console()
 
@@ -13,7 +14,7 @@ def safe_prompt(message, **kwargs):
     """Wrapper around Prompt.ask that catches KeyboardInterrupt."""
     try:
         return Prompt.ask(message, **kwargs)
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, EOFError):
         print("\nExiting the game. Bye!")
         sys.exit(0)
 
@@ -22,7 +23,7 @@ def safe_input(prompt=""):
     """Wrapper around input() that catches KeyboardInterrupt."""
     try:
         return input(prompt)
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, EOFError):
         print("\nExiting the game. Bye!")
         sys.exit(0)
 
@@ -55,9 +56,8 @@ def entrance_menu():
     table.add_row("[bold yellow]2.[/bold yellow]", "Instructions")
     table.add_row("[bold yellow]3.[/bold yellow]", "About")
     table.add_row("[bold yellow]4.[/bold yellow]", "Settings")
-    table.add_row("[bold yellow]5.[/bold yellow]", "High Scores")
-    table.add_row("[bold yellow]6.[/bold yellow]", "Achievements")
-    table.add_row("[bold yellow]7.[/bold yellow]", "Quit")
+    table.add_row("[bold yellow]5.[/bold yellow]", "Achievements & Stats")
+    table.add_row("[bold yellow]6.[/bold yellow]", "Quit")
     console.print(table)
     choice = safe_prompt("\nSelect an option", default="1")
     return choice
@@ -69,17 +69,22 @@ def start_game_menu():
     table.add_row("[bold yellow]1.[/bold yellow]", "Classic")
     table.add_row("[bold yellow]2.[/bold yellow]", "Time Attack")
     table.add_row("[bold yellow]3.[/bold yellow]", "Survival")
+    table.add_row("[bold yellow]B.[/bold yellow]", "Back")
     from rich.panel import Panel
 
     console.print(Panel.fit("Select Game Mode", border_style="cyan"))
     console.print(table)
-    mode_choice = safe_prompt("\nSelect a mode", default="1")
-    if mode_choice == "1":
+    mode_choice = safe_prompt("\nSelect a mode", default="1").strip().lower()
+    if mode_choice in ["b", "back"]:
+        return None
+    elif mode_choice == "1":
         return "classic"
     elif mode_choice == "2":
         return "time_attack"
     elif mode_choice == "3":
         return "survival"
+    else:
+        return None
 
 
 def instructions_menu():
@@ -93,7 +98,7 @@ def instructions_menu():
     - [bright_yellow]Power-Up (♦)[/bright_yellow]: Increases your score.
     - [bright_red]Power-Down (▲)[/bright_red]: Reduces your score and may shrink your snake.
 • In Time Attack mode, you have a limited time to score as high as possible.
-• In Survival mode, the game speeds up more aggressively.
+• In Survival mode, the game speeds up over time.
 • The walls are deadly – colliding with them or your own tail ends the game.
 • After losing, press ENTER to return to the main menu.
 
@@ -120,11 +125,11 @@ def about_menu():
 
 This enhanced, terminal-based Snake game features creative visuals, animations, and engaging gameplay.
 It includes multiple game modes:
-• Classic: Standard gameplay.
-• Time Attack: Score as high as possible within a time limit.
-• Survival: Increase difficulty aggressively.
+• Classic: Standard gameplay with 3 lives.
+• Time Attack: Score as high as possible within 60 seconds.
+• Survival: Play as long as you want – the snake speeds up over time.
 
-Audio feedback and background music enhance the experience.
+Audio feedback, background music, and achievements enhance the experience.
 Statistics and achievements track your progress.
 
 [bold]Author:[/bold] Exonymos
@@ -167,7 +172,7 @@ def settings_menu(settings_manager):
             break
         elif choice == "r":
             confirm = safe_prompt(
-                "Reset all settings to default? (y/n)", choices=["y", "n"], default="n"
+                "Reset all settings to default?", choices=["y", "n"], default="n"
             )
             if confirm.lower() == "y":
                 settings_manager.reset_settings()
@@ -183,6 +188,11 @@ def settings_menu(settings_manager):
                 console.print(
                     f"[green]{option['name']} set to {'On' if new_val else 'Off'}.[/green]"
                 )
+                if opt_key == "6":
+                    if new_val:
+                        audio.init_audio()
+                    else:
+                        audio.stop_music()
                 safe_input("Press ENTER to continue...")
                 console.clear()
             elif option["type"] == "choice":
@@ -194,17 +204,43 @@ def settings_menu(settings_manager):
                     choice_table.add_row(f"{idx}.", ch)
                 console.print(choice_table)
                 user_choice = safe_prompt(
-                    "Enter the number corresponding to your choice",
-                    default="1",
+                    "Enter the number corresponding to your choice", default="1"
                 )
                 new_choice = choices[int(user_choice) - 1]
                 settings_manager.update_setting(opt_key, new_choice)
                 console.print(f"[green]{option['name']} set to {new_choice}.[/green]")
-                input("Press ENTER to continue...")
+                safe_input("Press ENTER to continue...")
+                console.clear()
         else:
             console.print("[red]Invalid input. Please try again.[/red]")
             safe_input("Press ENTER to continue...")
             console.clear()
+
+
+def achievement_details_menu(achievements_manager):
+    # Show detailed information about each achievement.
+    console.clear()
+    unlocked = achievements_manager.get_unlocked()
+    locked = achievements_manager.get_locked()
+    detail_table = Table(
+        title="Achievement Details", show_header=True, header_style="bold blue"
+    )
+    detail_table.add_column("Status", justify="center")
+    detail_table.add_column("Achievement", justify="left")
+    detail_table.add_column("Detail", justify="left")
+    detail_table.add_column("Unlocked At", justify="center")
+    for ach in unlocked:
+        # Look up the detail from POSSIBLE_ACHIEVEMENTS dict.
+        detail = ""
+        for key, val in POSSIBLE_ACHIEVEMENTS.items():
+            if key == ach["name"]:
+                detail = val
+                break
+        detail_table.add_row("Unlocked", ach["name"], detail, ach["unlock_time"])
+    for ach in locked:
+        detail_table.add_row("Locked", ach["name"], ach["detail"], "-")
+    console.print(detail_table)
+    safe_input("\nPress ENTER to return to the Achievements & Stats menu...")
 
 
 def high_scores_menu(score_manager):
@@ -220,25 +256,59 @@ def high_scores_menu(score_manager):
         high = score_manager.scores.get(mode, {}).get("high", 0)
         table.add_row(mode_display, str(last), str(high))
     console.print(table)
-    safe_input("\nPress ENTER to return to the main menu...")
+    safe_input("\nPress ENTER to return to the Achievements & Stats menu...")
 
 
-def achievements_menu(achievements_manager):
-    console.clear()
-    stats = achievements_manager.get_stats()
-    table = Table(
-        title="Achievements & Statistics", show_header=True, header_style="bold green"
-    )
-    table.add_column("Total Games", justify="center")
-    table.add_column("Total Score", justify="center")
-    table.add_column("Best Score", justify="center")
-    table.add_column("Last Game Time", justify="center")
-
-    table.add_row(
-        str(stats["total_games"]),
-        str(stats["total_score"]),
-        str(stats["best_score"]),
-        str(stats["last_game_time"] or "N/A"),
-    )
-    console.print(table)
-    safe_input("\nPress ENTER to return to the main menu...")
+def achievements_stats_menu(score_manager, achievements_manager):
+    while True:
+        console.clear()
+        table = Table(title="Achievements & Stats", show_header=False, box=None)
+        table.add_row("[bold yellow]1.[/bold yellow]", "View High Scores")
+        table.add_row("[bold yellow]2.[/bold yellow]", "View Achievements")
+        table.add_row("[bold yellow]3.[/bold yellow]", "Clear Scores")
+        table.add_row("[bold yellow]4.[/bold yellow]", "Clear Achievements")
+        table.add_row("[bold yellow]D.[/bold yellow]", "View Achievement Details")
+        table.add_row("[bold yellow]B.[/bold yellow]", "Back")
+        console.print(table)
+        choice = safe_prompt("\nSelect an option", default="B").strip().lower()
+        if choice in ["b", "back"]:
+            break
+        elif choice == "1":
+            high_scores_menu(score_manager)
+        elif choice == "2":
+            console.clear()
+            unlocked = achievements_manager.get_unlocked()
+            locked = achievements_manager.get_locked()
+            ach_table = Table(
+                title="Achievements", show_header=True, header_style="bold blue"
+            )
+            ach_table.add_column("Status", justify="center")
+            ach_table.add_column("Achievement", justify="left")
+            ach_table.add_column("Unlocked At", justify="center")
+            for ach in unlocked:
+                ach_table.add_row("Unlocked", ach["name"], ach["unlock_time"])
+            for ach in locked:
+                ach_table.add_row("Locked", ach["name"], "-")
+            console.print(ach_table)
+            safe_input("\nPress ENTER to return to the Achievements & Stats menu...")
+        elif choice == "3":
+            confirm = safe_prompt(
+                "Clear all scores?", choices=["y", "n"], default="n"
+            )
+            if confirm.lower() == "y":
+                score_manager.clear_scores()
+                console.print("[green]Scores cleared.[/green]")
+                safe_input("Press ENTER to continue...")
+        elif choice == "4":
+            confirm = safe_prompt(
+                "Clear all achievements?", choices=["y", "n"], default="n"
+            )
+            if confirm.lower() == "y":
+                achievements_manager.clear_achievements()
+                console.print("[green]Achievements cleared.[/green]")
+                safe_input("Press ENTER to continue...")
+        elif choice == "d":
+            achievement_details_menu(achievements_manager)
+        else:
+            console.print("[red]Invalid input. Please try again.[/red]")
+            safe_input("Press ENTER to continue...")

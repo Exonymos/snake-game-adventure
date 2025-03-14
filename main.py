@@ -10,16 +10,18 @@ from ui import (
     instructions_menu,
     about_menu,
     settings_menu,
-    high_scores_menu,
-    achievements_menu,
+    achievements_stats_menu,
+    safe_input,
 )
 from game import SnakeGame
 import audio
 
 
 async def main():
-    audio.init_audio()  # Initialize pygame mixer and start background music
     settings_manager = SettingsManager()
+    # Initialize music only if enabled.
+    if settings_manager.options["6"]["value"]:
+        audio.init_audio()
     score_manager = ScoreManager()
     achievements_manager = AchievementsManager()
 
@@ -27,11 +29,17 @@ async def main():
         choice = entrance_menu()
         if choice == "1":
             mode = start_game_menu()
-            game = SnakeGame(settings_manager.options, mode=mode)
+            if mode is None:
+                continue
+            game = SnakeGame(
+                settings_manager.options,
+                mode=mode,
+                achievements_manager=achievements_manager,
+            )
             score = await game.run()
             score_manager.update_score(mode, score)
             achievements_manager.update_stats(score)
-            input("Press ENTER to return to the main menu...")
+            safe_input("Press ENTER to return to the main menu...")
         elif choice == "2":
             instructions_menu()
         elif choice == "3":
@@ -39,12 +47,10 @@ async def main():
         elif choice == "4":
             settings_menu(settings_manager)
         elif choice == "5":
-            high_scores_menu(score_manager)
-        elif choice == "6":
-            achievements_menu(achievements_manager)
-        elif choice in ["7", "q", "Q"]:
-            print("Thank you for playing Snake Game! Goodbye!")
-            time.sleep(1)
+            achievements_stats_menu(score_manager, achievements_manager)
+        elif choice in ["6", "q", "Q"]:
+            print("Goodbye and thanks for playing!")
+            time.sleep(2)
             sys.exit(0)
 
 
