@@ -28,9 +28,9 @@ def safe_input(prompt=""):
         sys.exit(0)
 
 
-def entrance_menu():
-    console.clear()
-    snake_ascii = r"""
+# Start screen ASCII art options.
+START_SCREEN_ART = {
+    "Art 1": r"""
         _            _             _                   _              _      
        / /\         /\ \     _    / /\                /\_\           /\ \    
       / /  \       /  \ \   /\_\ / /  \              / / /  _       /  \ \   
@@ -42,7 +42,33 @@ def entrance_menu():
 /_/\__/ / /  / / /    / / // /_________/\ \ \  / / /  \ \ \   / / /______    
 \ \/___/ /  / / /    / / // / /_       __\ \_\/ / /    \ \ \ / / /_______\   
  \_____\/   \/_/     \/_/ \_\___\     /____/_/\/_/      \_\_\\/__________/   
-    """
+    """,
+    "Art 2": r"""
+  /$$$$$$  /$$   /$$  /$$$$$$  /$$   /$$ /$$$$$$$$
+ /$$__  $$| $$$ | $$ /$$__  $$| $$  /$$/| $$_____/
+| $$  \__/| $$$$| $$| $$  \ $$| $$ /$$/ | $$      
+|  $$$$$$ | $$ $$ $$| $$$$$$$$| $$$$$/  | $$$$$   
+ \____  $$| $$  $$$$| $$__  $$| $$  $$  | $$__/   
+ /$$  \ $$| $$\  $$$| $$  | $$| $$\  $$ | $$      
+|  $$$$$$/| $$ \  $$| $$  | $$| $$ \  $$| $$$$$$$$
+ \______/ |__/  \__/|__/  |__/|__/  \__/|________/
+""",
+    "Art 3": r"""
+   _____ _   _          _  ________ 
+  / ____| \ | |   /\   | |/ /  ____|
+ | (___ |  \| |  /  \  | ' /| |__   
+  \___ \| . ` | / /\ \ |  < |  __|  
+  ____) | |\  |/ ____ \| . \| |____ 
+ |_____/|_| \_/_/    \_\_|\_\______|
+""",
+}
+
+
+def entrance_menu(settings_manager):
+    console.clear()
+    # Choose ASCII art based on settings.
+    art_choice = settings_manager.options["8"]["value"]
+    snake_ascii = START_SCREEN_ART.get(art_choice, START_SCREEN_ART["Art 1"])
     console.print(
         Panel(
             snake_ascii,
@@ -70,7 +96,6 @@ def start_game_menu():
     table.add_row("[bold yellow]2.[/bold yellow]", "Time Attack")
     table.add_row("[bold yellow]3.[/bold yellow]", "Survival")
     table.add_row("[bold yellow]B.[/bold yellow]", "Back")
-    from rich.panel import Panel
 
     console.print(Panel.fit("Select Game Mode", border_style="cyan"))
     console.print(table)
@@ -259,14 +284,50 @@ def high_scores_menu(score_manager):
     safe_input("\nPress ENTER to return to the Achievements & Stats menu...")
 
 
+def statistics_menu(score_manager, achievements_manager):
+    console.clear()
+    stats = score_manager.scores.get("statistics", {})
+    total_games = achievements_manager.get_stats()["total_games"]
+    avg_duration = (
+        (stats.get("total_playtime", 0) / total_games) if total_games > 0 else 0
+    )
+    avg_max_length = (
+        (stats.get("total_max_length", 0) / total_games) if total_games > 0 else 0
+    )
+    win_pct = 0
+    ta_games = stats.get("time_attack_games", 0)
+    if ta_games > 0:
+        win_pct = stats.get("time_attack_wins", 0) / ta_games * 100
+    table = Table(title="Game Statistics", show_header=True, header_style="bold green")
+    table.add_column("Statistic", justify="left")
+    table.add_column("Value", justify="center")
+    table.add_row("Total Games Played", str(total_games))
+    table.add_row("Total Playtime (s)", f"{stats.get('total_playtime', 0):.1f}")
+    table.add_row("Longest Game (s)", f"{stats.get('longest_game', 0):.1f}")
+    table.add_row("Average Game Duration (s)", f"{avg_duration:.1f}")
+    table.add_row("Average Max Snake Length", f"{avg_max_length:.1f}")
+    table.add_row("Total Collisions", str(stats.get("total_collisions", 0)))
+    table.add_row("Total Lives Lost", str(stats.get("total_lives_lost", 0)))
+    table.add_row("Win Percentage (Time Attack)", f"{win_pct:.1f}%")
+    table.add_row("Total Food Eaten", str(stats.get("total_food_eaten", 0)))
+    table.add_row("Total Power-ups Eaten", str(stats.get("total_powerups", 0)))
+    table.add_row("Total Power-downs Eaten", str(stats.get("total_powerdowns", 0)))
+    # Total score from achievements manager.
+    total_score = achievements_manager.get_stats()["total_score"]
+    table.add_row("Total Score", str(total_score))
+    console.print(table)
+    safe_input("\nPress ENTER to return to the Achievements & Stats menu...")
+
+
 def achievements_stats_menu(score_manager, achievements_manager):
     while True:
         console.clear()
         table = Table(title="Achievements & Stats", show_header=False, box=None)
         table.add_row("[bold yellow]1.[/bold yellow]", "View High Scores")
         table.add_row("[bold yellow]2.[/bold yellow]", "View Achievements")
-        table.add_row("[bold yellow]3.[/bold yellow]", "Clear Scores")
-        table.add_row("[bold yellow]4.[/bold yellow]", "Clear Achievements")
+        table.add_row("[bold yellow]3.[/bold yellow]", "View Game Statistics")
+        table.add_row("[bold yellow]4.[/bold yellow]", "Clear Scores")
+        table.add_row("[bold yellow]5.[/bold yellow]", "Clear Achievements")
         table.add_row("[bold yellow]D.[/bold yellow]", "View Achievement Details")
         table.add_row("[bold yellow]B.[/bold yellow]", "Back")
         console.print(table)
@@ -292,16 +353,18 @@ def achievements_stats_menu(score_manager, achievements_manager):
             console.print(ach_table)
             safe_input("\nPress ENTER to return to the Achievements & Stats menu...")
         elif choice == "3":
+            statistics_menu(score_manager, achievements_manager)
+        elif choice == "4":
             confirm = safe_prompt(
-                "Clear all scores?", choices=["y", "n"], default="n"
+                "Clear all scores? (y/n)", choices=["y", "n"], default="n"
             )
             if confirm.lower() == "y":
                 score_manager.clear_scores()
                 console.print("[green]Scores cleared.[/green]")
                 safe_input("Press ENTER to continue...")
-        elif choice == "4":
+        elif choice == "5":
             confirm = safe_prompt(
-                "Clear all achievements?", choices=["y", "n"], default="n"
+                "Clear all achievements? (y/n)", choices=["y", "n"], default="n"
             )
             if confirm.lower() == "y":
                 achievements_manager.clear_achievements()

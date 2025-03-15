@@ -7,7 +7,7 @@ from rich.console import Console
 console = Console()
 ACHIEVEMENTS_FILE = "achievements.json"
 
-# Predefined possible achievements and their details.
+# Predefined achievements and their details.
 POSSIBLE_ACHIEVEMENTS = {
     "Food Frenzy": "Eat 10 food items consecutively without missing.",
     "Long Snake": "Grow your snake to 15 segments.",
@@ -65,7 +65,6 @@ class AchievementsManager:
         self.save_stats()
 
     def add_achievement(self, achievement_key):
-        # Use the possible achievements dictionary to get full name/description.
         if not any(a["name"] == achievement_key for a in self.stats["achievements"]):
             unlock_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             self.stats["achievements"].append(

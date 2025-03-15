@@ -26,7 +26,7 @@ async def main():
     achievements_manager = AchievementsManager()
 
     while True:
-        choice = entrance_menu()
+        choice = entrance_menu(settings_manager)
         if choice == "1":
             mode = start_game_menu()
             if mode is None:
@@ -36,9 +36,9 @@ async def main():
                 mode=mode,
                 achievements_manager=achievements_manager,
             )
-            score = await game.run()
-            score_manager.update_score(mode, score)
-            achievements_manager.update_stats(score)
+            game_stats = await game.run()
+            score_manager.update_score(mode, game_stats)
+            achievements_manager.update_stats(game_stats["score"])
             safe_input("Press ENTER to return to the main menu...")
         elif choice == "2":
             instructions_menu()

@@ -61,6 +61,14 @@ DEFAULT_SETTINGS = {
         "default": "Normal",
         "value": "Normal",
     },
+    "8": {
+        "name": "Start Screen Art",
+        "type": "choice",
+        "choices": ["Art 1", "Art 2", "Art 3"],
+        "save": True,
+        "default": "Art 1",
+        "value": "Art 1",
+    },
 }
 
 
@@ -112,7 +120,7 @@ class SettingsManager:
 
 
 class ScoreManager:
-    """Manage and persist scores for different game modes and combined scores."""
+    """Manage and persist scores and additional game stats."""
 
     def __init__(self, filename=SCORE_FILE):
         self.filename = filename
@@ -121,6 +129,20 @@ class ScoreManager:
             "time_attack": {"last": 0, "high": 0},
             "survival": {"last": 0, "high": 0},
             "combined": {"last": 0, "high": 0},
+            "statistics": {
+                "total_games": 0,
+                "total_playtime": 0,
+                "longest_game": 0,
+                "total_max_length": 0,
+                "total_collisions": 0,
+                "total_lives_lost": 0,
+                "games_won": 0,
+                "time_attack_games": 0,
+                "time_attack_wins": 0,
+                "total_food_eaten": 0,
+                "total_powerups": 0,
+                "total_powerdowns": 0,
+            },
         }
         self.load_scores()
 
@@ -141,10 +163,12 @@ class ScoreManager:
         except Exception as e:
             console.print(f"[red]Error saving scores: {e}[/red]")
 
-    def update_score(self, mode, score):
-        self.scores[mode]["last"] = score
-        if score > self.scores[mode]["high"]:
-            self.scores[mode]["high"] = score
+    def update_score(self, mode, game_stats):
+        # Update per-mode scores.
+        self.scores[mode]["last"] = game_stats["score"]
+        if game_stats["score"] > self.scores[mode]["high"]:
+            self.scores[mode]["high"] = game_stats["score"]
+        # Update combined scores.
         self.scores["combined"]["last"] = (
             self.scores["classic"]["last"]
             + self.scores["time_attack"]["last"]
@@ -155,6 +179,26 @@ class ScoreManager:
             + self.scores["time_attack"]["high"]
             + self.scores["survival"]["high"]
         )
+        # Update additional statistics.
+        stats = self.scores["statistics"]
+        stats["total_games"] += 1
+        stats["total_playtime"] += game_stats["duration"]
+        if game_stats["duration"] > stats["longest_game"]:
+            stats["longest_game"] = game_stats["duration"]
+        stats["total_max_length"] += game_stats["max_length"]
+        stats["total_collisions"] += game_stats["collisions"]
+        stats["total_food_eaten"] += game_stats["food_eaten"]
+        stats["total_powerups"] += game_stats["powerups"]
+        stats["total_powerdowns"] += game_stats["powerdowns"]
+        if mode == "classic":
+            lives_lost = 3 - game_stats["lives_remaining"]
+            stats["total_lives_lost"] += lives_lost
+            if game_stats["won"]:
+                stats["games_won"] += 1
+        if mode == "time_attack":
+            stats["time_attack_games"] = stats.get("time_attack_games", 0) + 1
+            if game_stats["won"]:
+                stats["time_attack_wins"] = stats.get("time_attack_wins", 0) + 1
         self.save_scores()
 
     def clear_scores(self):
@@ -163,5 +207,19 @@ class ScoreManager:
             "time_attack": {"last": 0, "high": 0},
             "survival": {"last": 0, "high": 0},
             "combined": {"last": 0, "high": 0},
+            "statistics": {
+                "total_games": 0,
+                "total_playtime": 0,
+                "longest_game": 0,
+                "total_max_length": 0,
+                "total_collisions": 0,
+                "total_lives_lost": 0,
+                "games_won": 0,
+                "time_attack_games": 0,
+                "time_attack_wins": 0,
+                "total_food_eaten": 0,
+                "total_powerups": 0,
+                "total_powerdowns": 0,
+            },
         }
         self.save_scores()
